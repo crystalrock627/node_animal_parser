@@ -1,9 +1,10 @@
 // const axios = require("axios");
 import axios from "axios";
 import JSSoup from "jssoup";
+import { normalizeDescription } from "./krasnodarParser";
 const baseUrl = "https://priut.ru";
 
-type Animal = {
+export type Animal = {
   name: string;
   description: string;
   photos: string[];
@@ -41,7 +42,7 @@ const handleAge = (age: string): Animal["age"] => {
   return "baby";
 };
 
-const getSize = (size: number): Animal["size"] => {
+export const getSize = (size: number): Animal["size"] => {
   if (size > 50) {
     return "L";
   }
@@ -85,8 +86,7 @@ const parseWebsite = async (page: number) => {
   }
   return mainArray;
 };
-
-parseWebsite(0).then((el) => console.log(el[el.length - 1]));
+// parseWebsite(0).then((el) => console.log(el[el.length - 1]));
 
 const parsePagePet = async (url: string) => {
   const animal: Partial<Animal> = {};
@@ -108,20 +108,21 @@ const parsePagePet = async (url: string) => {
     });
     const photos = images.reduce((acc, el, index) => {
       const img = el.attrs.src;
-      if (!img.startsWith("https")) {
-        if (index > 6) {
-          return;
+      console.log("img", img);
+      if (!img.startsWith("https") && !img.includes("preview")) {
+        if (acc.length > 6) {
+          return acc;
         }
         acc.push(baseUrl + img);
       }
       return acc;
     }, []);
 
-    animal["name"] = name.getText();
+    animal["name"] = name.getText().trim();
     animal["gender"] = tegs[8].getText() === "Сука" ? false : true;
     animal["age"] = handleAge(tegs[10].getText());
     animal["size"] = getSize(+tegs[11].getText().slice(0, 2));
-    animal["description"] = description.getText();
+    animal["description"] = normalizeDescription(description.getText().trim());
     animal["type"] = animalType[tegs[8].getText()];
     animal["photos"] = photos;
     animal["url"] = url;
